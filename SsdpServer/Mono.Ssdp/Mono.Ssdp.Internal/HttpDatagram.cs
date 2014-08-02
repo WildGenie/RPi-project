@@ -43,7 +43,7 @@ namespace Mono.Ssdp.Internal
         
         public WebHeaderCollection Headers { get; private set; }
 
-#region Static Datagram Parser
+        #region Static Datagram Parser
     
         static readonly byte [] fingerprint_discover_response = Encoding.ASCII.GetBytes ("HTTP/1.1 200 OK\r\n");
         static readonly byte [] fingerprint_msearch = Encoding.ASCII.GetBytes ("M-SEARCH * HTTP/1.1\r\n");
@@ -151,7 +151,7 @@ namespace Mono.Ssdp.Internal
             return (b >= 'a' && b <= 'z') ? (byte)(b - 0x20) : b;
         }
 
-#endregion
+        #endregion
 
     }
 }
