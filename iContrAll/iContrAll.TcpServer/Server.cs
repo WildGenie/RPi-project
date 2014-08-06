@@ -5,6 +5,12 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using MySql.Data.MySqlClient;
+using System.Xml;
+using System.Xml.Linq;
+using System.Linq;
+using System.IO;
+
 namespace iContrAll.TcpServer
 {
     class Server
@@ -34,56 +40,67 @@ namespace iContrAll.TcpServer
 
             while (true)
             {
-                ////blocks until a client has connected to the server
-                //TcpClient client = this.tcpListener.AcceptTcpClient();
-                
                 //blocks until a client has connected to the server
-                ClientClass c = new ClientClass(this.tcpListener.AcceptTcpClient());
+                TcpClient client = this.tcpListener.AcceptTcpClient();
+                
+                ////blocks until a client has connected to the server
+                //ClientClass c = new ClientClass(this.tcpListener.AcceptTcpClient());
 
-                lock(syncObject)
-                {
-                    clientList.Add(c);
+                //lock(syncObject)
+                //{
+                //    clientList.Add(c);
                     
-                }
+                //}
 
                 //create a thread to handle communication 
                 //with connected client
                 ////Thread clientThread = new Thread(new ParameterizedThreadStart(HandleClientComm));
-                //Thread clientThread = new Thread(()=>HandleClientComm(client, i++));
+                Thread clientThread = new Thread(()=>HandleClientComm(client, i++));
                 ////clientThread.Start(client);
-                //clientThread.Start();
+                clientThread.Start();
             }
         }
 
         private void HandleClientComm(TcpClient tcpClient, int i)
         {
+            
             //TcpClient tcpClient = (TcpClient)client;
             NetworkStream clientStream = tcpClient.GetStream();
 
-            byte[] rawMessage = new byte[4096];
+            byte[] rawMessage = new byte[16384];
             int bytesRead;
 
             if (clientStream.CanRead)
             {
-                byte[] myReadBuffer = new byte[1024];
+                byte[] myReadBuffer = new byte[16384];
                 StringBuilder myCompleteMessage = new StringBuilder();
                 int numberOfBytesRead = 0;
 
                 // Incoming message may be larger than the buffer size. 
                 do
                 {
-                    numberOfBytesRead = clientStream.Read(myReadBuffer, 0, myReadBuffer.Length);
+                    // TODO:
+                    //      try-catch block for too large messages!!!
+                    numberOfBytesRead += clientStream.Read(myReadBuffer, 0, myReadBuffer.Length);
                     Console.WriteLine(i+" "+numberOfBytesRead);
                     
-                    myCompleteMessage.AppendFormat("{0}", Encoding.ASCII.GetString(myReadBuffer, 0, numberOfBytesRead));
+                    myCompleteMessage.AppendFormat("{0}", Encoding.UTF8.GetString(myReadBuffer, 0, numberOfBytesRead));
 
-                    if (numberOfBytesRead > 4) break;
+                    // if (numberOfBytesRead > 4) break;
                 }
                 while (clientStream.DataAvailable);
 
                 // Print out the received message to the console.
-                Console.WriteLine("You received the following message : " +
-                                             myCompleteMessage);
+                Console.WriteLine("You received the following message : " + myCompleteMessage);
+
+                //byte[] answer = ProcessMessage(myReadBuffer, numberOfBytesRead);
+                byte[] answer = BuildMessage(7, AnswerDeviceList());
+                if (answer.Length > 0)
+                {
+                    clientStream.Write(answer, 0, answer.Length);
+                    clientStream.Flush();
+                    Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(answer));
+                }
             }
             else
             {
@@ -176,6 +193,210 @@ namespace iContrAll.TcpServer
             //}
 
             tcpClient.Close();
+        }
+
+        private byte[] ProcessMessage(byte[] rawMessage, int numberOfBytesRead)
+        {
+            //if (numberOfBytesRead == 0)
+            //{
+            //    //the client has disconnected from the server
+            //    break;
+            //}
+            //else
+            //    if (numberOfBytesRead < 8) continue;
+
+            
+
+            byte[] messageTypeArray = new byte[4];
+            Array.Copy(rawMessage, messageTypeArray, 4);
+
+            int messageType = BitConverter.ToInt32(messageTypeArray, 0);
+
+            //if (messageType > 40) continue;
+
+            byte[] messageLengthArray = new byte[4];
+            Array.Copy(rawMessage, 4, messageLengthArray, 0, 4);
+
+            int messageLength = BitConverter.ToInt32(messageLengthArray, 0);
+
+            byte[] messageArray = new byte[messageLength];
+            Array.Copy(rawMessage, 8, messageArray, 0, messageLength);
+
+            string message = Encoding.UTF8.GetString(messageArray);
+
+            Console.WriteLine("Message type: {0}\nMessage length: {1}\nMessage: {2}", messageType, messageLength, message);
+
+            switch (messageType)
+            {
+                case (byte)MessageType.LoginRequest:
+                    if (CheckLoginDetails(message))
+                    {
+                        return BuildMessage(15, new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+                    }
+                    break;
+                case (byte)MessageType.QueryDeviceList:
+                    return BuildMessage(7, AnswerDeviceList());
+                case (byte)MessageType.AddDevice:
+                    AddDevice(message);
+                    break;
+                default:
+                    break;
+            }
+
+            return new byte[0];
+        }
+
+        private byte[] AnswerDeviceList()
+        {
+            Console.WriteLine("AnswerDeviceList call.");
+            //using(var dal = new DataAccesLayer())
+            {
+                //IEnumerable<Device> deviceList = dal.GetDeviceList();
+                IEnumerable<Device> deviceList = DummyDb.GetDummyDevice();
+                
+                var devicesById = from device in deviceList
+                                  group device by device.Id into newGroup
+                                  orderby newGroup.Key
+                                  select newGroup;
+
+                XmlWriterSettings settings = new XmlWriterSettings();
+                settings.NewLineHandling = NewLineHandling.Entitize;
+                settings.Indent = true;
+                settings.IndentChars = "\t";
+                settings.Encoding = Encoding.UTF8;
+
+                StringBuilder sb = new StringBuilder();
+                MemoryStream memStream = new MemoryStream();
+                using (XmlWriter xw = XmlWriter.Create(memStream, settings))
+                {
+                    xw.WriteStartDocument();
+                    xw.WriteStartElement("root");
+                    foreach (var device in devicesById)
+                    {
+                        xw.WriteStartElement("device");
+                        
+                        {
+                            // TODO: 
+                            //      automatikus típusdetekció, 
+                            //      attribútumok lehetőleg automatikus feldolgozása (attribútumra foreach)
+                            //      NEM IS KELL, MERT MINDEGYIKNEK UGYANAZOK AZ ATTRIBÚTUMAI!!! 
+
+                            xw.WriteElementString("id", device.Key);
+                            xw.WriteElementString("ping", "y");
+                            xw.WriteElementString("mirror", "n");
+                            xw.WriteElementString("version", "1.0");
+                            xw.WriteElementString("link", "y");
+                            xw.WriteStartElement("channels");
+                            foreach (var channel in device)
+			                {
+                                xw.WriteStartElement("ch");
+			                        xw.WriteElementString("id", channel.Channel.ToString());
+                                    xw.WriteElementString("name", channel.Name);
+                                    xw.WriteStartElement("attr");
+                                        xw.WriteElementString("timer", "000500");
+                                        xw.WriteElementString("voltage", "240");
+                                    xw.WriteEndElement();
+                                    //xw.WriteStartElement("actions");
+                                    //xw.WriteEndElement();
+                                xw.WriteEndElement();
+			                }
+                            
+                            xw.WriteEndElement();
+                        }
+                        xw.WriteEndElement();
+                    }
+                    xw.WriteEndElement();
+                    xw.WriteEndDocument();
+                    xw.Flush();
+                    xw.Close();
+                }
+                byte[] answer = memStream.ToArray();
+                memStream.Close();
+                memStream.Dispose();
+                
+                Console.WriteLine("Reply: "+ sb.ToString());
+                return answer;
+            }
+        }
+
+        public byte[] BuildMessage(int msgNumber, byte[] message)
+        {
+            byte[] msgNbrArray = new byte[4];
+            Array.Copy(BitConverter.GetBytes(msgNumber), msgNbrArray, msgNbrArray.Length);
+
+            //byte[] messageArray = Encoding.UTF8.GetBytes(message);
+            byte[] lengthArray = new byte[4];
+            Array.Copy(BitConverter.GetBytes(message.Length), lengthArray, lengthArray.Length);
+            //Array.Copy(BitConverter.GetBytes(messageArray.Length), lengthArray, lengthArray.Length);
+            //byte[] answer = new byte[4 + 4 + messageArray.Length];
+            byte[] answer = new byte[4 + 4 + message.Length];
+
+            System.Buffer.BlockCopy(msgNbrArray, 0, answer, 0, msgNbrArray.Length);
+            System.Buffer.BlockCopy(lengthArray, 0, answer, msgNbrArray.Length, lengthArray.Length);
+            //System.Buffer.BlockCopy(messageArray, 0, answer, msgNbrArray.Length + lengthArray.Length, messageArray.Length);
+            System.Buffer.BlockCopy(message, 0, answer, msgNbrArray.Length + lengthArray.Length, message.Length);
+
+            return answer;
+        }
+
+        private bool CheckLoginDetails(string message)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(message);
+
+            // TODO:
+            //      Do some check!
+            //      LOGIN KEZELÉS!!!
+            XmlNodeList elemList = doc.GetElementsByTagName("loginid");
+            //Console.WriteLine(doc.GetElementById("loginid").Value);
+            if (elemList.Count > 0)
+            {
+                Console.WriteLine(elemList[0].InnerXml);
+            }
+            elemList = doc.GetElementsByTagName("password");
+            if (elemList.Count > 0)
+            {
+                Console.WriteLine(elemList[0].InnerXml);
+            }
+
+            //Console.WriteLine(doc.GetElementById("password").Value);
+
+            return true;
+        }
+        
+        private void AddDevice(string message)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(message);
+            
+            XmlNodeList elemList = doc.GetElementsByTagName("id");
+            string elemId="";
+
+            if (elemList.Count>0)
+            {
+                elemId = elemList[0].InnerXml;
+            }
+            
+            int elemChannel=0;
+            elemList = doc.GetElementsByTagName("channel");
+            if (elemList.Count > 0)
+            {
+                int.TryParse(elemList[0].InnerXml, out elemChannel);
+            }
+
+            elemList = doc.GetElementsByTagName("name");
+            string elemName="";
+
+            if (elemList.Count > 0)
+            {
+                elemName = elemList[0].InnerXml;
+            }
+
+            using (var dal = new DataAccesLayer())
+            {
+                dal.AddDevice(elemId, elemChannel, elemName);
+            }
+
         }
     }
 }

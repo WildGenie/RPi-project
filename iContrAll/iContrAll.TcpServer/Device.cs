@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace iContrAll.TcpServer
 {
-    abstract class Device
+    class Device
     {
         private string id;
         public string Id
@@ -28,6 +28,6 @@ namespace iContrAll.TcpServer
             get { return name; }
             set { name = value; }
         }
-
+        
     }
 }
