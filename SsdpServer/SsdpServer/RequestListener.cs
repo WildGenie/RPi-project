@@ -69,7 +69,7 @@ namespace SsdpServer
             "CACHE-CONTROL: max-age = {0}\r\n" +
             "DATE: {1}\r\n" +
             "EXT:\r\n" +
-            "LOCATION: {2}\r\n" +
+            "LOCATION: http://{2}:1122\r\n" +
             "SERVER: {3} UPnP/1.1 {4}\r\n" +
             "ST: {5}\r\n" +
             "USN: {6}\r\n" +
@@ -102,7 +102,7 @@ namespace SsdpServer
                 socket = createMulticastSocket();
 
                 socket.Bind(new IPEndPoint(IPAddress.Any, Port));
-
+                Console.WriteLine("SSDP server is listening...");
                 ReadResult(new ReceiveBuffer (socket));
             }
         }
@@ -127,13 +127,19 @@ namespace SsdpServer
                 {
                     buffer.Socket.ReceiveFrom(buffer.Buffer, ref buffer.SenderEndPoint);
 
+                    Console.WriteLine("Received from: {0}", buffer.SenderIPEndPoint.ToString());
+
                     var dgram = buffer.Buffer;
                     if (dgram != null && dgram.Length > 0 && IsDgramMSearch(dgram))
                     {
+                        Console.WriteLine("Datagram:\n{0}", Encoding.UTF8.GetString(dgram));
+
                         Socket responseSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                         byte[] sendbuf = CreateAliveResponse(getLocalIPAddress(), identifier, identifier, 900);
+                        //byte[] sendbuf = Encoding.UTF8.GetBytes(identifier);
 
-                        responseSocket.SendTo(sendbuf, buffer.SenderEndPoint);
+                        responseSocket.SendTo(sendbuf, buffer.SenderIPEndPoint);
+                        Console.WriteLine("Response sent to: {0}\n{1}", buffer.SenderIPEndPoint, Encoding.UTF8.GetString(sendbuf));
                     }
                 }
             }
@@ -145,7 +151,7 @@ namespace SsdpServer
 
         public byte[] CreateAliveResponse(string location, string searchType, string usn, ushort maxAge)
         {
-            return Encoding.UTF8.GetBytes(String.Format(
+            return Encoding.ASCII.GetBytes(String.Format(
                 alive_response, maxAge, DateTime.Now.ToString("r"), location, os, user_agent, searchType, usn));
         }
 

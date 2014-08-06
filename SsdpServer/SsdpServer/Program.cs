@@ -12,8 +12,10 @@ namespace SsdpServer
         {
             string identifier = args.Length > 0 ? args[0] : "urn:schemas-upnp-org:device:RlanDevice:1";
 
-            var listener = new RequestListener(identifier);
-            listener.Start();
+            using (var listener = new RequestListener(identifier))
+            {
+                listener.Start();
+            }
         }
     }
 }

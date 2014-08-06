@@ -5,8 +5,6 @@ VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SsdpServer", "SsdpServer\SsdpServer.csproj", "{82DD4BA0-32A2-426B-950F-A526C02B608A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mono.Ssdp", "Mono.Ssdp\Mono.Ssdp.csproj", "{AD422A19-BA07-4039-B843-84E386804DD1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,10 +15,6 @@ Global
 		{82DD4BA0-32A2-426B-950F-A526C02B608A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{82DD4BA0-32A2-426B-950F-A526C02B608A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{82DD4BA0-32A2-426B-950F-A526C02B608A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AD422A19-BA07-4039-B843-84E386804DD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AD422A19-BA07-4039-B843-84E386804DD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AD422A19-BA07-4039-B843-84E386804DD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AD422A19-BA07-4039-B843-84E386804DD1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

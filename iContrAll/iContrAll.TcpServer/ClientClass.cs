@@ -1,20 +1,32 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace iContrAll.TcpServer
 {
-    class Program
+    public enum ClientState { LoginPhase, LoginOK }
+    class ClientClass
     {
-        static void Main(string[] args)
+        TcpClient tcpClient;
+        public EndPoint Endpoint { get { return tcpClient.Client.RemoteEndPoint; } }
+
+        public ClientClass(TcpClient client)
         {
-            new Server(1122);
+            this.tcpClient = client;
+        }
 
-            int msgNumber = 15;
+        public bool JoinClient() { return false; }
 
-            byte[] messageArray = new byte[] { 1, 0, 0, 0, 0, 0, 0, 0};
-
+        public void SendMessage(int msgNumber, string message)
+        {
             byte[] msgNbrArray = new byte[4];
             Array.Copy(BitConverter.GetBytes(msgNumber), msgNbrArray, msgNbrArray.Length);
-
-            // byte[] messageArray = Encoding.UTF8.GetBytes(message);
+            
+            byte[] messageArray = Encoding.UTF8.GetBytes(message);
             byte[] lengthArray = new byte[4];
             Array.Copy(BitConverter.GetBytes(messageArray.Length), lengthArray, lengthArray.Length);
             byte[] answer = new byte[4 + 4 + messageArray.Length];
