@@ -58,16 +58,19 @@ namespace iContrAll.TcpServer
             //      MINDEN RESULT-ot ELLENŐRIZNI!!! (típus, try-catch)
 
 
-            IDbCommand cmd = mysqlConn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM Device";
-
-            IDataReader reader = cmd.ExecuteReader();
-
             List<Device> returnList = new List<Device>();
 
-            while (reader.Read())
+            using (var cmd = mysqlConn.CreateCommand())
             {
-                returnList.Add(new Device { Id = reader["Id"].ToString(), Channel = int.Parse(reader["Channel"].ToString()), Name = reader["Name"].ToString() });
+                cmd.CommandText = "SELECT * FROM Device";
+                
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        returnList.Add(new Device { Id = reader["Id"].ToString(), Channel = int.Parse(reader["Channel"].ToString()), Name = reader["Name"].ToString() });
+                    }
+                }
             }
 
             return returnList;
@@ -75,26 +78,28 @@ namespace iContrAll.TcpServer
 
         public void AddDevice(string id, int channel, string name)
         {
-            MySqlCommand cmd = mysqlConn.CreateCommand();
-
-            var count = GetDeviceList().Count(d=>d.Id==id && d.Channel==channel);
-            if (count>0)
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
             {
-                // UPDATE
-                cmd.CommandText = "UPDATE Device SET Name = @Name)";
-                cmd.Parameters.AddWithValue("@Name", name);
-            }
-            else
-            {
-                // INSERT
-                cmd.CommandText = "INSERT INTO Device(Id,Channel,Name) VALUES(@Id, @Channel, @Name)";
-                cmd.Parameters.AddWithValue("@Id", id);
-                cmd.Parameters.AddWithValue("@Channel", channel);
-                cmd.Parameters.AddWithValue("@Name", name);
-            }
+                var count = GetDeviceList().Count(d => d.Id == id && d.Channel == channel);
+                if (count > 0)
+                {
+                    // UPDATE
+                    cmd.CommandText = "UPDATE Device SET Name = @Name WHERE Id = @Id AND Channel = @Channel";
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@Channel", channel);
+                    cmd.Parameters.AddWithValue("@Name", name);
+                }
+                else
+                {
+                    // INSERT
+                    cmd.CommandText = "INSERT INTO Device(Id,Channel,Name) VALUES(@Id, @Channel, @Name)";
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@Channel", channel);
+                    cmd.Parameters.AddWithValue("@Name", name);
+                }
 
-            cmd.ExecuteNonQuery();
-            
+                cmd.ExecuteNonQuery();
+            }
         }
 
         #endregion
@@ -102,8 +107,7 @@ namespace iContrAll.TcpServer
         #region IDisposable members
         public void Dispose()
         {
-            if (mysqlConn.State != ConnectionState.Closed)
-                mysqlConn.Close();
+            mysqlConn.Close();
         }
 
         #endregion

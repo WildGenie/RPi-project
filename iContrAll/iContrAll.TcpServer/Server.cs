@@ -77,7 +77,7 @@ namespace iContrAll.TcpServer
                 int numberOfBytesRead = 0;
 
                 // Incoming message may be larger than the buffer size. 
-                do
+                while(true)
                 {
                     // TODO:
                     //      try-catch block for too large messages!!!
@@ -85,22 +85,36 @@ namespace iContrAll.TcpServer
                     Console.WriteLine(i+" "+numberOfBytesRead);
                     
                     myCompleteMessage.AppendFormat("{0}", Encoding.UTF8.GetString(myReadBuffer, 0, numberOfBytesRead));
+                    
+                    Console.WriteLine("You received the following message : " + myCompleteMessage);
+                    //if (numberOfBytesRead > 4) break;
 
-                    // if (numberOfBytesRead > 4) break;
+                    //byte[] answer = BuildMessage(15, new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+                    //byte[] answer = BuildMessage(7, AnswerDeviceList());
+                    byte[] answer = ProcessMessage(myReadBuffer, numberOfBytesRead);
+                    if (answer.Length > 0)
+                    {
+                        clientStream.Write(answer, 0, answer.Length);
+                        clientStream.Flush();
+                        Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(answer));
+                    }
+                    
                 }
-                while (clientStream.DataAvailable);
+                //while (clientStream.DataAvailable);
 
                 // Print out the received message to the console.
-                Console.WriteLine("You received the following message : " + myCompleteMessage);
+                //Console.WriteLine("You received the following message : " + myCompleteMessage);
 
+
+                //// FONTOS KÓD!!!
                 //byte[] answer = ProcessMessage(myReadBuffer, numberOfBytesRead);
-                byte[] answer = BuildMessage(7, AnswerDeviceList());
-                if (answer.Length > 0)
-                {
-                    clientStream.Write(answer, 0, answer.Length);
-                    clientStream.Flush();
-                    Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(answer));
-                }
+                ////byte[] answer = BuildMessage(7, AnswerDeviceList());
+                //if (answer.Length > 0)
+                //{
+                //    clientStream.Write(answer, 0, answer.Length);
+                //    clientStream.Flush();
+                //    Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(answer));
+                //}
             }
             else
             {
@@ -249,10 +263,10 @@ namespace iContrAll.TcpServer
         private byte[] AnswerDeviceList()
         {
             Console.WriteLine("AnswerDeviceList call.");
-            //using(var dal = new DataAccesLayer())
+            using(var dal = new DataAccesLayer())
             {
-                //IEnumerable<Device> deviceList = dal.GetDeviceList();
-                IEnumerable<Device> deviceList = DummyDb.GetDummyDevice();
+                IEnumerable<Device> deviceList = dal.GetDeviceList();
+                //IEnumerable<Device> deviceList = DummyDb.GetDummyDevice();
                 
                 var devicesById = from device in deviceList
                                   group device by device.Id into newGroup
@@ -260,9 +274,7 @@ namespace iContrAll.TcpServer
                                   select newGroup;
 
                 XmlWriterSettings settings = new XmlWriterSettings();
-                settings.NewLineHandling = NewLineHandling.Entitize;
-                settings.Indent = true;
-                settings.IndentChars = "\t";
+
                 settings.Encoding = Encoding.UTF8;
 
                 StringBuilder sb = new StringBuilder();
@@ -330,6 +342,7 @@ namespace iContrAll.TcpServer
             //Array.Copy(BitConverter.GetBytes(messageArray.Length), lengthArray, lengthArray.Length);
             //byte[] answer = new byte[4 + 4 + messageArray.Length];
             byte[] answer = new byte[4 + 4 + message.Length];
+            byte[] asd = BitConverter.GetBytes(message.Length);
 
             System.Buffer.BlockCopy(msgNbrArray, 0, answer, 0, msgNbrArray.Length);
             System.Buffer.BlockCopy(lengthArray, 0, answer, msgNbrArray.Length, lengthArray.Length);
