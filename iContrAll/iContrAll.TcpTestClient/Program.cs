@@ -11,19 +11,19 @@ namespace iContrAll.TcpTestClient
     class Program
     {
         static IPAddress address;
-        static int port;
+        static int port=0;
         static void Main(string[] args)
         {
             try
             {
                 if (!(IPAddress.TryParse(args[0], out address) && int.TryParse(args[1], out port)))
                 {
-                    throw new ArgumentOutOfRangeException();
+                    Console.WriteLine("Wrong parameters: {0}:{1}", address.ToString(), port);
                 }
             }
             catch(Exception)
             {
-                Console.Error.WriteLine("Arguments require:\n- Target IPv4 address (e.g. 192.168.1.100)\n- Port number");
+                Console.Error.WriteLine("Arguments required:\n- Target IPv4 address (e.g. 192.168.1.100)\n- Port number");
                 return;
             }
 

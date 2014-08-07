@@ -19,9 +19,9 @@ namespace iContrAll.TcpServer
         private Thread listenThread;
         private int port;
 
-        private List<ClientClass> clientList = new List<ClientClass>();
+        //private List<ClientClass> clientList = new List<ClientClass>();
 
-        private object syncObject = new object();
+        //private object syncObject = new object();
 
         public Server(int port)
         {
@@ -61,27 +61,37 @@ namespace iContrAll.TcpServer
             }
         }
 
+        struct ProcessMessageResult
+        {
+            public bool Success;
+            public byte[] Answer;
+        }
+
         private void HandleClientComm(TcpClient tcpClient, int i)
         {
             
             //TcpClient tcpClient = (TcpClient)client;
             NetworkStream clientStream = tcpClient.GetStream();
 
-            byte[] rawMessage = new byte[16384];
-            int bytesRead;
+            //byte[] rawMessage = new byte[32768];
+            //int bytesRead;
 
             if (clientStream.CanRead)
             {
-                byte[] myReadBuffer = new byte[16384];
+                
                 StringBuilder myCompleteMessage = new StringBuilder();
                 int numberOfBytesRead = 0;
 
                 // Incoming message may be larger than the buffer size. 
                 while(true)
                 {
+                    byte[] myReadBuffer = new byte[32768];
                     // TODO:
                     //      try-catch block for too large messages!!!
                     numberOfBytesRead += clientStream.Read(myReadBuffer, 0, myReadBuffer.Length);
+
+                    if (!tcpClient.Connected) Console.WriteLine("NINCS KONNEKTOLVA!");
+
                     Console.WriteLine(i+" "+numberOfBytesRead);
                     
                     myCompleteMessage.AppendFormat("{0}", Encoding.UTF8.GetString(myReadBuffer, 0, numberOfBytesRead));
@@ -91,14 +101,20 @@ namespace iContrAll.TcpServer
 
                     //byte[] answer = BuildMessage(15, new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
                     //byte[] answer = BuildMessage(7, AnswerDeviceList());
-                    byte[] answer = ProcessMessage(myReadBuffer, numberOfBytesRead);
-                    if (answer.Length > 0)
+                    ProcessMessageResult result = ProcessMessage(myReadBuffer, numberOfBytesRead);
+                    if (result.Answer.Length > 0)
                     {
-                        clientStream.Write(answer, 0, answer.Length);
+                        clientStream.Write(result.Answer, 0, result.Answer.Length);
                         clientStream.Flush();
-                        Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(answer));
+                        Console.WriteLine("Replied: {0}", Encoding.UTF8.GetString(result.Answer));
                     }
-                    
+                    if (result.Success || numberOfBytesRead > 16384)
+                    {
+                        // csak akkor nullázzuk, ha sikerült feldolgozni.
+                        // aztán mondjuk megszopjuk, ha nem
+                        numberOfBytesRead = 0;
+                        myCompleteMessage.Clear();
+                    }
                 }
                 //while (clientStream.DataAvailable);
 
@@ -209,7 +225,7 @@ namespace iContrAll.TcpServer
             tcpClient.Close();
         }
 
-        private byte[] ProcessMessage(byte[] rawMessage, int numberOfBytesRead)
+        private ProcessMessageResult ProcessMessage(byte[] rawMessage, int numberOfBytesRead)
         {
             //if (numberOfBytesRead == 0)
             //{
@@ -245,90 +261,25 @@ namespace iContrAll.TcpServer
                 case (byte)MessageType.LoginRequest:
                     if (CheckLoginDetails(message))
                     {
-                        return BuildMessage(15, new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+                        return new ProcessMessageResult { Success = true, Answer = BuildMessage(15, new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 }) };
                     }
                     break;
                 case (byte)MessageType.QueryDeviceList:
-                    return BuildMessage(7, AnswerDeviceList());
+                    return new ProcessMessageResult { Success = true, Answer = BuildMessage(7, AnswerDeviceList()) };
                 case (byte)MessageType.AddDevice:
                     AddDevice(message);
-                    break;
+                    return new ProcessMessageResult { Success = true, Answer = new byte[0] };
+                    
+                case (byte)MessageType.DelDevice:
+                    DelDevice(message);
+                    return new ProcessMessageResult { Success = true, Answer = new byte[0] };
+                    
                 default:
-                    break;
+                    return new ProcessMessageResult { Success = false, Answer = new byte[0] };
+                    
             }
 
-            return new byte[0];
-        }
-
-        private byte[] AnswerDeviceList()
-        {
-            Console.WriteLine("AnswerDeviceList call.");
-            using(var dal = new DataAccesLayer())
-            {
-                IEnumerable<Device> deviceList = dal.GetDeviceList();
-                //IEnumerable<Device> deviceList = DummyDb.GetDummyDevice();
-                
-                var devicesById = from device in deviceList
-                                  group device by device.Id into newGroup
-                                  orderby newGroup.Key
-                                  select newGroup;
-
-                XmlWriterSettings settings = new XmlWriterSettings();
-
-                settings.Encoding = Encoding.UTF8;
-
-                StringBuilder sb = new StringBuilder();
-                MemoryStream memStream = new MemoryStream();
-                using (XmlWriter xw = XmlWriter.Create(memStream, settings))
-                {
-                    xw.WriteStartDocument();
-                    xw.WriteStartElement("root");
-                    foreach (var device in devicesById)
-                    {
-                        xw.WriteStartElement("device");
-                        
-                        {
-                            // TODO: 
-                            //      automatikus típusdetekció, 
-                            //      attribútumok lehetőleg automatikus feldolgozása (attribútumra foreach)
-                            //      NEM IS KELL, MERT MINDEGYIKNEK UGYANAZOK AZ ATTRIBÚTUMAI!!! 
-
-                            xw.WriteElementString("id", device.Key);
-                            xw.WriteElementString("ping", "y");
-                            xw.WriteElementString("mirror", "n");
-                            xw.WriteElementString("version", "1.0");
-                            xw.WriteElementString("link", "y");
-                            xw.WriteStartElement("channels");
-                            foreach (var channel in device)
-			                {
-                                xw.WriteStartElement("ch");
-			                        xw.WriteElementString("id", channel.Channel.ToString());
-                                    xw.WriteElementString("name", channel.Name);
-                                    xw.WriteStartElement("attr");
-                                        xw.WriteElementString("timer", "000500");
-                                        xw.WriteElementString("voltage", "240");
-                                    xw.WriteEndElement();
-                                    //xw.WriteStartElement("actions");
-                                    //xw.WriteEndElement();
-                                xw.WriteEndElement();
-			                }
-                            
-                            xw.WriteEndElement();
-                        }
-                        xw.WriteEndElement();
-                    }
-                    xw.WriteEndElement();
-                    xw.WriteEndDocument();
-                    xw.Flush();
-                    xw.Close();
-                }
-                byte[] answer = memStream.ToArray();
-                memStream.Close();
-                memStream.Dispose();
-                
-                Console.WriteLine("Reply: "+ sb.ToString());
-                return answer;
-            }
+            return new ProcessMessageResult { Success = false, Answer = new byte[0] };
         }
 
         public byte[] BuildMessage(int msgNumber, byte[] message)
@@ -342,7 +293,6 @@ namespace iContrAll.TcpServer
             //Array.Copy(BitConverter.GetBytes(messageArray.Length), lengthArray, lengthArray.Length);
             //byte[] answer = new byte[4 + 4 + messageArray.Length];
             byte[] answer = new byte[4 + 4 + message.Length];
-            byte[] asd = BitConverter.GetBytes(message.Length);
 
             System.Buffer.BlockCopy(msgNbrArray, 0, answer, 0, msgNbrArray.Length);
             System.Buffer.BlockCopy(lengthArray, 0, answer, msgNbrArray.Length, lengthArray.Length);
@@ -375,6 +325,72 @@ namespace iContrAll.TcpServer
             //Console.WriteLine(doc.GetElementById("password").Value);
 
             return true;
+        }
+
+        private byte[] AnswerDeviceList()
+        {
+            Console.WriteLine("AnswerDeviceList called.");
+            using (var dal = new DataAccesLayer())
+            {
+                IEnumerable<Device> deviceList = dal.GetDeviceList();
+                //IEnumerable<Device> deviceList = DummyDb.GetDummyDevice();
+
+                var devicesById = from device in deviceList
+                                  group device by device.Id into newGroup
+                                  orderby newGroup.Key
+                                  select newGroup;
+
+                XmlWriterSettings settings = new XmlWriterSettings();
+                settings.Encoding = Encoding.UTF8;
+
+                MemoryStream memStream = new MemoryStream();
+                using (XmlWriter xw = XmlWriter.Create(memStream, settings))
+                {
+                    xw.WriteStartDocument();
+                    xw.WriteStartElement("root");
+                    foreach (var device in devicesById)
+                    {
+                        xw.WriteStartElement("device");
+
+                            // TODO: 
+                            //      automatikus típusdetekció, 
+                            //      attribútumok lehetőleg automatikus feldolgozása (attribútumra foreach)
+                            //      NEM IS KELL, MERT MINDEGYIKNEK UGYANAZOK AZ ATTRIBÚTUMAI!!! 
+
+                            xw.WriteElementString("id", device.Key);
+                            xw.WriteElementString("ping", "y");
+                            xw.WriteElementString("mirror", "n");
+                            xw.WriteElementString("version", "");
+                            xw.WriteElementString("link", "y");
+                            xw.WriteStartElement("channels");
+                            foreach (var channel in device)
+                            {
+                                xw.WriteStartElement("ch");
+                                xw.WriteElementString("id", channel.Channel.ToString());
+                                xw.WriteElementString("name", channel.Name);
+                                xw.WriteStartElement("attr");
+                                xw.WriteElementString("timer", "000500");
+                                xw.WriteElementString("voltage", "240");
+                                xw.WriteEndElement();
+                                xw.WriteStartElement("actions");
+                                xw.WriteEndElement();
+                                xw.WriteEndElement();
+                            }
+
+                            xw.WriteEndElement();
+                        xw.WriteEndElement();
+                    }
+                    xw.WriteEndElement();
+                    xw.WriteEndDocument();
+                    xw.Flush();
+                    xw.Close();
+                }
+                byte[] answer = memStream.ToArray();
+                memStream.Close();
+                memStream.Dispose();
+
+                return answer;
+            }
         }
         
         private void AddDevice(string message)
@@ -410,6 +426,40 @@ namespace iContrAll.TcpServer
                 dal.AddDevice(elemId, elemChannel, elemName);
             }
 
+        }
+
+        private void DelDevice(string message)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(message);
+
+            XmlNodeList elemList = doc.GetElementsByTagName("id");
+            string elemId = "";
+
+            if (elemList.Count > 0)
+            {
+                elemId = elemList[0].InnerXml;
+            }
+
+            int elemChannel = 0;
+            elemList = doc.GetElementsByTagName("channel");
+            if (elemList.Count > 0)
+            {
+                int.TryParse(elemList[0].InnerXml, out elemChannel);
+            }
+
+            elemList = doc.GetElementsByTagName("name");
+            string elemName = "";
+
+            if (elemList.Count > 0)
+            {
+                elemName = elemList[0].InnerXml;
+            }
+
+            using (var dal = new DataAccesLayer())
+            {
+                dal.DelDevice(elemId, elemChannel);
+            }
         }
     }
 }

@@ -12,8 +12,6 @@ namespace iContrAll.TcpServer
 
     class DataAccesLayer: IDisposable
     {
-        private string connectionString = string.Empty;
-        private string databaseName = string.Empty;
         private MySqlConnection mysqlConn;
 
 
@@ -39,7 +37,7 @@ namespace iContrAll.TcpServer
         {
             try
             {
-                connectionString = ConfigurationManager.AppSettings["mysqlConnectionString"].ToString();
+                var connectionString = ConfigurationManager.AppSettings["mysqlConnectionString"].ToString();
 
                 mysqlConn = new MySqlConnection(connectionString);
                 mysqlConn.Open();
@@ -97,6 +95,19 @@ namespace iContrAll.TcpServer
                     cmd.Parameters.AddWithValue("@Channel", channel);
                     cmd.Parameters.AddWithValue("@Name", name);
                 }
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public void DelDevice(string id, int channel)
+        {
+            using (var cmd = mysqlConn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM Device " +
+                                         "WHERE Id = @Id AND Channel = @Channel";
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@Channel", channel);
 
                 cmd.ExecuteNonQuery();
             }
