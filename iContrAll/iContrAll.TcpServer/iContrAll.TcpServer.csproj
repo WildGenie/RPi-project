@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Place.cs" />
     <Compile Include="ServiceHandler.cs" />
     <Compile Include="DataAccesLayer.cs" />
     <Compile Include="Device.cs" />

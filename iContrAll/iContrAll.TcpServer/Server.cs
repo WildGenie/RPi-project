@@ -26,12 +26,11 @@ namespace iContrAll.TcpServer
             this.tcpListener.Start();
             Console.WriteLine("Server is listening on port {0}...", this.tcpListener.LocalEndpoint);
 
-            int i = 0;
-
             while (true)
             {
                 //blocks until a client has connected to the server
                 TcpClient client = this.tcpListener.AcceptTcpClient();
+                Console.WriteLine("Client connected: {0}", client.Client.RemoteEndPoint);
 
                 // TODO: start() a servicehandlernek
                 ServiceHandler sh = new ServiceHandler(client);

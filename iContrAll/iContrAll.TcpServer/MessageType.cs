@@ -26,13 +26,13 @@ namespace iContrAll.TcpServer
         AddDevice = 21,
         DelDevice = 22,
         CmdSetPassword = 23,
-        eCmdGetRoomList = 24,
-        eRoomList = 25,
-        eCmdAddRoom = 26,
-        eCmdDelRoom = 27,
-        eCmdAddDeviceToRoom = 28,
-        eCmdDelDeviceFromRoom = 29,
-        eCmdRenameRoom = 30,
+        eCmdGetPlaceList = 24,
+        ePlaceList = 25,
+        eCmdAddPlace = 26,
+        eCmdDelPlace = 27,
+        eCmdAddDeviceToPlace = 28,
+        eCmdDelDeviceFromPlace = 29,
+        eCmdRenamePlace = 30,
         eGetActionLists = 31,
         eCmdActionLists = 32,
         eCmdAddActionList = 33,
@@ -40,5 +40,31 @@ namespace iContrAll.TcpServer
         eCmdDelActionList = 35,
         eCmdDelActionFromActionList = 36,
         eCmdExecActionList = 37
+    }
+
+    public class Message
+    {
+        private MessageType type;
+        public MessageType Type { get { return type; } }
+
+        private int length;
+        public int Length { get { return length; } }
+
+        private string content;
+        public string Content { get { return content; } }
+
+        public Message(MessageType type, int length, string content)
+        {
+            this.type = type;
+            this.length = length;
+            this.content = content;
+        }
+
+        public Message(int type, int length, string content)
+        {
+            this.type = (MessageType)type;
+            this.length = length;   
+            this.content = content;
+        }
     }
 }
