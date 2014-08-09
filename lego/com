@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo gcc main.c -l wiringPi -g libfec.a -o si4464
