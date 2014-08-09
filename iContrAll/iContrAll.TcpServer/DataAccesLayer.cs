@@ -313,7 +313,7 @@ namespace iContrAll.TcpServer
                     }
                 }
 
-                cmd.CommandText = "SELECT Actions.DeviceId, Actions.Order, Actions.ActionListId, ActionTypes.Name FROM Actions, ActionTypes WHERE ActionTypes.Id = Actions.ActionTypeId";
+                cmd.CommandText = "SELECT Actions.DeviceId, Actions.OrderNumber, Actions.ActionListId, ActionTypes.Name FROM Actions, ActionTypes WHERE ActionTypes.Id = Actions.ActionTypeId";
                 cmd.ExecuteNonQuery();
 
                 using (var reader = cmd.ExecuteReader())
@@ -322,12 +322,12 @@ namespace iContrAll.TcpServer
                     {
                         Action a = new Action
                         {
-                            DeviceId = reader["Actions.DeviceId"].ToString(),
-                            Order = int.Parse(reader["Actions.Order"].ToString()),
-                            ActionTypeName = reader["ActionTypes.Name"].ToString(),
+                            DeviceId = reader["DeviceId"].ToString(),
+                            Order = int.Parse(reader["OrderNumber"].ToString()),
+                            ActionTypeName = reader["Name"].ToString(),
 
                         };
-                        Guid actionListId = new Guid(reader["Actions.ActionListId"].ToString());
+                        Guid actionListId = new Guid(reader["ActionListId"].ToString());
 
                         foreach (var actionList in returnList)
                         {
@@ -390,13 +390,21 @@ namespace iContrAll.TcpServer
                 }
 
                 // not necessary to check, 'cause all of the 3 parameters are key attributes
-                cmd.CommandText = "INSERT INTO Actions(ActionTypeId,DeviceId, ActionListId,Order) VALUES(@ActionTypeId, @DeviceId, @ActionListId, @Order)";
+                cmd.CommandText = "INSERT INTO Actions(ActionTypeId, DeviceId, ActionListId, OrderNumber) VALUES(@ActionTypeId, @DeviceId, @ActionListId, @Order)";
                 cmd.Parameters.AddWithValue("@ActionTypeId", actionType);
                 cmd.Parameters.AddWithValue("@DeviceId", deviceId.ToString());
                 cmd.Parameters.AddWithValue("@ActionListId", actionListId.ToString());
                 cmd.Parameters.AddWithValue("@Order", order);
 
-                cmd.ExecuteNonQuery();
+
+                try
+                {
+                    cmd.ExecuteNonQuery();
+                }
+                catch (MySqlException)
+                {
+                    Console.WriteLine("Exception: Duplicate key");
+                }
                 
             }
         }
@@ -406,7 +414,7 @@ namespace iContrAll.TcpServer
             using (MySqlCommand cmd = mysqlConn.CreateCommand())
             {
                 // not necessary to check, 'cause all of the 3 parameters are key attributes
-                cmd.CommandText = "DELETE FROM Actions WHERE ActionTypeId=@ActionTypeId AND DeviceId=@DeviceId AND ActionListId=@ActionListId AND Order=@Order";
+                cmd.CommandText = "DELETE FROM Actions WHERE ActionTypeId=@ActionTypeId AND DeviceId=@DeviceId AND ActionListId=@ActionListId AND OrderNumber=@Order";
                 cmd.Parameters.AddWithValue("@ActionTypeId", actionType);
                 cmd.Parameters.AddWithValue("@DeviceId", deviceId.ToString());
                 cmd.Parameters.AddWithValue("@ActionListId", actionListId.ToString());
