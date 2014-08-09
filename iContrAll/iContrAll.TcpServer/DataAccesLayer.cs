@@ -42,8 +42,7 @@ namespace iContrAll.TcpServer
         {
             // TODO:
             //      MINDEN RESULT-ot ELLENŐRIZNI!!! (típus, try-catch)
-
-            List<Device> returnList = new List<Device>();
+            List<Device> deviceList = new List<Device>();
 
             using (var cmd = mysqlConn.CreateCommand())
             {
@@ -53,40 +52,98 @@ namespace iContrAll.TcpServer
                 {
                     while (reader.Read())
                     {
-                        returnList.Add(
-                            new Device 
-                                { 
-                                    Id = reader["Id"].ToString(), 
-                                    Channel = int.Parse(reader["Channel"].ToString()), 
-                                    Name = reader["Name"].ToString() 
-                                });
+                        // mandatory properties
+                        Device d = new Device
+                        {
+                            Id = reader["Id"].ToString(),
+                            Channel = int.Parse(reader["Channel"].ToString()),
+                            Name = reader["Name"].ToString(),
+                            Actions = new List<ActionType>(),
+                            Voltage = 0,
+                            DeviceType = ""
+                        };
+                        // optional properties
+                        d.Timer = reader["Timer"].ToString();
+                        int tempVoltage = 0;
+                        if (int.TryParse(reader["Voltage"].ToString(), out tempVoltage)) d.Voltage = tempVoltage;
+                        object devType = reader["DeviceType"];
+                        
+                        d.DeviceType = devType!=null? d.DeviceType=devType.ToString(): "";
+                        
+                        deviceList.Add(d);
+                    }
+                }
+
+                cmd.CommandText = "SELECT * FROM ActionTypes";
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        ActionType actionType = new ActionType()
+                        {
+                            Id = int.Parse(reader["Id"].ToString()),
+                            DeviceType = reader["DeviceType"].ToString(),
+                            Name = reader["Name"].ToString()
+                        };
+
+                        foreach (var device in deviceList)
+                        {
+                            if (device.DeviceType == actionType.DeviceType)
+                            {
+                                device.Actions.Add(actionType);
+                            }
+                            
+                        }
                     }
                 }
             }
 
-            return returnList;
+            return deviceList;
         }
 
-        public void AddDevice(string id, int channel, string name)
+        // TODO: készülj hibás bemenetre a 'voltage' esetén a függvény hívásakor (pl. string...)
+        public void AddDevice(string id, int channel, string name, string timer, int voltage)
         {
+            // Nem professzionális, kéne valami típus paraméter, de így is jó.
+            bool usableType = false;
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT Id FROM DeviceTypes";
+                using (var reader = cmd.ExecuteReader())
+                {
+                    // Nem professzionális, kéne valami típus paraméter, de így is jó.
+                    if (reader["Id"].ToString() == id.Substring(0,3))
+                    {
+                        usableType = true;
+                    }
+                }
+            }
+
             using (MySqlCommand cmd = mysqlConn.CreateCommand())
             {
                 var count = GetDeviceList().Count(d => d.Id == id && d.Channel == channel);
                 if (count > 0)
                 {
                     // UPDATE
-                    cmd.CommandText = "UPDATE Devices SET Name = @Name WHERE Id = @Id AND Channel = @Channel";
+                    cmd.CommandText = "UPDATE Devices SET Name = @Name, Timer = @Timer, Voltage=@Voltage WHERE Id = @Id AND Channel = @Channel";
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@Channel", channel);
                     cmd.Parameters.AddWithValue("@Name", name);
+                    cmd.Parameters.AddWithValue("@Timer", timer);
+                    cmd.Parameters.AddWithValue("@Voltage", voltage);
                 }
                 else
                 {
                     // INSERT
-                    cmd.CommandText = "INSERT INTO Devices(Id,Channel,Name) VALUES(@Id, @Channel, @Name)";
+                    cmd.CommandText = "INSERT INTO Devices(Id,Channel,Name,DeviceType) VALUES(@Id, @Channel, @Name, @DeviceType)";
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@Channel", channel);
                     cmd.Parameters.AddWithValue("@Name", name);
+                    if (usableType)
+                        cmd.Parameters.AddWithValue("@DeviceType", id.Substring(0, 3));
+                    cmd.Parameters.AddWithValue("@Timer", timer);
+                    cmd.Parameters.AddWithValue("@Voltage", voltage);
                 }
 
                 cmd.ExecuteNonQuery();
@@ -185,7 +242,6 @@ namespace iContrAll.TcpServer
 
         public void AddDeviceToPlace(string deviceId, int channel, Guid placeId)
         {
-
             using (MySqlCommand cmd = mysqlConn.CreateCommand())
             {
                 cmd.CommandText = "SELECT * FROM DevicesInPlaces";
@@ -234,7 +290,132 @@ namespace iContrAll.TcpServer
             }
         }
 
+        public List<ActionList> GetActionLists()
+        {
+            var returnList = new List<ActionList>();
 
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT * FROM ActionLists";
+                cmd.ExecuteNonQuery();
+                
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        returnList.Add(
+                            new ActionList
+                            {
+                                Id = new Guid(reader["Id"].ToString()),
+                                Name = reader["Name"].ToString(),
+                                Actions = new List<Action>()
+                            });
+                    }
+                }
+
+                cmd.CommandText = "SELECT Actions.DeviceId, Actions.Order, Actions.ActionListId, ActionTypes.Name FROM Actions, ActionTypes WHERE ActionTypes.Id = Actions.ActionTypeId";
+                cmd.ExecuteNonQuery();
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Action a = new Action
+                        {
+                            DeviceId = reader["Actions.DeviceId"].ToString(),
+                            Order = int.Parse(reader["Actions.Order"].ToString()),
+                            ActionTypeName = reader["ActionTypes.Name"].ToString(),
+
+                        };
+                        Guid actionListId = new Guid(reader["Actions.ActionListId"].ToString());
+
+                        foreach (var actionList in returnList)
+                        {
+                            if (actionList.Id == actionListId)
+                            {
+                                actionList.Actions.Add(a);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return returnList;
+        }
+
+        public void AddActionList(string id, string name)
+        {
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                var count = GetActionLists().Count(d => d.Id == new Guid(id));
+                if (count > 0)
+                {
+                    // UPDATE
+                    cmd.CommandText = "UPDATE ActionLists SET Name = @Name WHERE Id = @Id";
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@Name", name);
+                }
+                else
+                {
+                    cmd.CommandText = "INSERT INTO ActionLists(Id,Name) VALUES(@Id, @Name)";
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@Name", name);
+                }
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public void DelActionList(string id)
+        {
+            using (var cmd = mysqlConn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM ActionLists WHERE Id = @Id";
+                cmd.Parameters.AddWithValue("@Id", id);
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public void AddActionToActionList(Guid actionListId, int actionType /*actionTypes.Name*/, int order, string deviceId)
+        {
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                ActionList actionList = GetActionLists().First(l=>l.Id == actionListId);
+                
+                if (actionList.Actions.Count(a=>a.Order == order)>0)
+                {
+                    Console.WriteLine("Tried to add an action with an existing order number again");
+                    cmd.Dispose();
+                    return;
+                }
+
+                // not necessary to check, 'cause all of the 3 parameters are key attributes
+                cmd.CommandText = "INSERT INTO Actions(ActionTypeId,DeviceId, ActionListId,Order) VALUES(@ActionTypeId, @DeviceId, @ActionListId, @Order)";
+                cmd.Parameters.AddWithValue("@ActionTypeId", actionType);
+                cmd.Parameters.AddWithValue("@DeviceId", deviceId.ToString());
+                cmd.Parameters.AddWithValue("@ActionListId", actionListId.ToString());
+                cmd.Parameters.AddWithValue("@Order", order);
+
+                cmd.ExecuteNonQuery();
+                
+            }
+        }
+
+        public void DelActionFromActionList(Guid actionListId, int actionType /*actionTypes.Name*/, int order, string deviceId)
+        {
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                // not necessary to check, 'cause all of the 3 parameters are key attributes
+                cmd.CommandText = "DELETE FROM Actions WHERE ActionTypeId=@ActionTypeId AND DeviceId=@DeviceId AND ActionListId=@ActionListId AND Order=@Order";
+                cmd.Parameters.AddWithValue("@ActionTypeId", actionType);
+                cmd.Parameters.AddWithValue("@DeviceId", deviceId.ToString());
+                cmd.Parameters.AddWithValue("@ActionListId", actionListId.ToString());
+                cmd.Parameters.AddWithValue("@Order", order);
+
+                cmd.ExecuteNonQuery();
+
+            }
+        }
 
         #endregion
 
@@ -245,7 +426,5 @@ namespace iContrAll.TcpServer
         }
 
         #endregion
-
-        
     }
 }

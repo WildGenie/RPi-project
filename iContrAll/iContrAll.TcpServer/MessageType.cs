@@ -34,7 +34,7 @@ namespace iContrAll.TcpServer
         eCmdDelDeviceFromPlace = 29,
         eCmdRenamePlace = 30,
         eGetActionLists = 31,
-        eCmdActionLists = 32,
+        eActionLists = 32,
         eCmdAddActionList = 33,
         eCmdAddActionToActionList = 34,
         eCmdDelActionList = 35,

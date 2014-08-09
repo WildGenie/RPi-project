@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace iContrAll.TcpServer
 {
@@ -21,7 +22,7 @@ namespace iContrAll.TcpServer
 
     class ServiceHandler
     {
-        private const int bufferSize = 16384;
+        private const int bufferSize = 32768;
         
         private TcpClient tcpClient;
         
@@ -234,13 +235,26 @@ namespace iContrAll.TcpServer
                 case (byte)MessageType.eCmdDelDeviceFromPlace:
                     AddOrDelDeviceToOrFromPlace(false, message);
                     break;
+                case (byte)MessageType.eGetActionLists:
+                    return BuildMessage(32, CreateAnswerActionList());
+                case (byte)MessageType.eCmdAddActionList:
+                    AddActionList(message);
+                    break;
+                case (byte)MessageType.eCmdDelActionList:
+                    DelActionList(message);
+                    break;
+                case (byte)MessageType.eCmdAddActionToActionList:
+                    AddOrDelActionToOrFromActionList(true, message);
+                    break;
+                case (byte)MessageType.eCmdDelActionFromActionList:
+                    AddOrDelActionToOrFromActionList(false, message);
+                    break;
                 default:
                     break;
             }
 
             return null;
         }
-
 
         private byte[] BuildMessage(int msgNumber, byte[] message)
         {
@@ -347,10 +361,17 @@ namespace iContrAll.TcpServer
                                 xw.WriteElementString("id", channel.Channel.ToString());
                                 xw.WriteElementString("name", channel.Name);
                                 xw.WriteStartElement("attr");
-                                xw.WriteElementString("timer", "000500");
-                                xw.WriteElementString("voltage", "240");
+                                xw.WriteElementString("timer", channel.Timer);
+                                xw.WriteElementString("voltage", channel.Voltage.ToString());
                                 xw.WriteEndElement();
                                 xw.WriteStartElement("actions");
+                                foreach (var action in channel.Actions)
+                                {
+                                    xw.WriteStartElement("action");
+                                    xw.WriteAttributeString("id", action.Id.ToString());
+                                    xw.WriteAttributeString("name", action.Name.ToString());
+                                    xw.WriteEndElement();
+                                }
                                 xw.WriteEndElement();
                                 xw.WriteEndElement();
                             }
@@ -435,9 +456,26 @@ namespace iContrAll.TcpServer
                 elemName = elemList[0].InnerXml;
             }
 
+            elemList = doc.GetElementsByTagName("timer");
+            string elemTimer = "";
+
+            if (elemList.Count > 0)
+            {
+                elemTimer = elemList[0].InnerXml;
+            }
+
+            int elemVoltage = 0;
+            elemList = doc.GetElementsByTagName("voltage");
+            if (elemList.Count > 0)
+            {
+                int.TryParse(elemList[0].InnerXml, out elemVoltage);
+                
+
+            }
+
             using (var dal = new DataAccesLayer())
             {
-                dal.AddDevice(elemId, elemChannel, elemName);
+                dal.AddDevice(elemId, elemChannel, elemName, elemTimer, elemVoltage);
             }
 
         }
@@ -602,6 +640,120 @@ namespace iContrAll.TcpServer
             }
         }
 
-         
+        private byte[] CreateAnswerActionList()
+        {
+            Console.WriteLine("AnswerActionList called.");
+            byte[] answer;
+            using (var dal = new DataAccesLayer())
+            {
+                IEnumerable<ActionList> actionLists = dal.GetActionLists();
+
+                XmlWriterSettings settings = new XmlWriterSettings();
+                settings.Encoding = Encoding.UTF8;
+
+                MemoryStream memStream = new MemoryStream();
+                using (XmlWriter xw = XmlWriter.Create(memStream, settings))
+                {
+                    xw.WriteStartDocument();
+                    xw.WriteStartElement("root");
+                    foreach (var actionList in actionLists)
+                    {
+                        xw.WriteStartElement("actionlist");
+                        xw.WriteAttributeString("id", actionList.Id.ToString());
+                        xw.WriteAttributeString("name", actionList.Name.ToString());
+                        foreach (var action in actionList.Actions)
+                        {
+                            xw.WriteStartElement("action");
+                            xw.WriteAttributeString("order", action.Order.ToString());
+                            xw.WriteAttributeString("actionid", action.ActionTypeName);
+                            xw.WriteAttributeString("to", action.DeviceId);
+                            xw.WriteEndElement();
+                        }
+
+                        xw.WriteEndElement();
+                    }
+                    xw.WriteEndElement();
+                    xw.WriteEndDocument();
+                    xw.Flush();
+                    xw.Close();
+                }
+                answer = memStream.ToArray();
+                memStream.Close();
+                memStream.Dispose();
+            }
+            return answer;
+        }
+
+        private void AddActionList(string message)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(message);
+
+            XmlNodeList elemList = doc.GetElementsByTagName("id");
+            string elemId = "";
+
+            if (elemList.Count > 0)
+            {
+                elemId = elemList[0].InnerXml;
+            }
+
+            elemList = doc.GetElementsByTagName("name");
+            string elemName = "";
+
+            if (elemList.Count > 0)
+            {
+                elemName = elemList[0].InnerXml;
+            }
+
+            using (var dal = new DataAccesLayer())
+            {
+                dal.AddActionList(elemId, elemName);
+            }
+        }
+
+        private void DelActionList(string message)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(message);
+
+            XmlNodeList elemList = doc.GetElementsByTagName("id");
+            string elemId = "";
+
+            if (elemList.Count > 0)
+            {
+                elemId = elemList[0].InnerXml;
+            }
+
+            using (var dal = new DataAccesLayer())
+            {
+                dal.DelActionList(elemId);
+            }
+        }
+
+        private void AddOrDelActionToOrFromActionList(bool p, string message)
+        {
+            XElement xelement = XElement.Parse(message);
+            IEnumerable<XElement> actionEntries = xelement.Elements();
+
+            var actionsToAddOrDel = from action in actionEntries
+                                    select new
+                                    {
+                                        ActionListId = new Guid(action.Element("actionlistid").Value),
+                                        ActionId = int.Parse(action.Element("actionid").Value),
+                                        Order = int.Parse(action.Element("order").Value),
+                                        DeviceId = action.Element("to").Value
+                                    };
+
+            using (var dal = new DataAccesLayer())
+            {
+                foreach (var a in actionsToAddOrDel)
+                {
+                    if (p)
+                        dal.AddActionToActionList(a.ActionListId, a.ActionId, a.Order, a.DeviceId);
+                    else
+                        dal.DelActionFromActionList(a.ActionListId, a.ActionId, a.Order, a.DeviceId);
+                }
+            }
+        }
     }
 }
