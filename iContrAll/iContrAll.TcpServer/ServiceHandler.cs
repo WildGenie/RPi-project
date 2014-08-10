@@ -14,23 +14,19 @@ namespace iContrAll.TcpServer
 {
     public enum ClientState { LoginPhase, LoginOK }
 
-    class ProcessMessageResult
-    {
-        public bool Success { get; set; }
-        public byte[] Answer { get; set; }
-    }
-
     class ServiceHandler
     {
         private const int bufferSize = 32768;
         
         private TcpClient tcpClient;
-        
+        private ClientState clientState;
+
         public EndPoint Endpoint { get { return tcpClient.Client.RemoteEndPoint; } }
 
         public ServiceHandler(TcpClient client)
         {
             this.tcpClient = client;
+            clientState = ClientState.LoginPhase;
 
             Thread commThread = new Thread(HandleMessages);
             commThread.Start();
@@ -116,6 +112,12 @@ namespace iContrAll.TcpServer
 
                 int messageType = BitConverter.ToInt32(messageTypeArray, 0);
 
+                if (clientState == ClientState.LoginPhase
+                    && messageType != (byte)MessageType.LoginRequest)
+                {
+                    return returnList;
+                }
+
                 bool exists = false;
 
                 // TODO: extract, do it only once!!
@@ -133,6 +135,7 @@ namespace iContrAll.TcpServer
                     
                     Console.WriteLine("Gyanus!");
                     break;
+                    
                     //if (completeBuffer.Length > 4)
                     //{
                     //    var temp = completeBuffer;
@@ -159,10 +162,10 @@ namespace iContrAll.TcpServer
                 returnList.Add(new Message(messageType, messageLength, message));
 
                 //Console.WriteLine(completeBuffer.Length + " - " + (8 + messageArray.Length));
-                if (completeBuffer.Length>=8+messageArray.Length) // CONTINUE,
+                if (completeBuffer.Length >= 8 + messageArray.Length) // CONTINUE,
                 {
-                    byte[] tempBuf = new byte[completeBuffer.Length - (8+messageArray.Length)];
-                    Console.WriteLine(completeBuffer.Length + " - " + (8 + messageArray.Length)+ " = tempBuf.Length: "+tempBuf.Length);
+                    byte[] tempBuf = new byte[completeBuffer.Length - (8 + messageArray.Length)];
+                    Console.WriteLine(completeBuffer.Length + " - " + (8 + messageArray.Length) + " = tempBuf.Length: " + tempBuf.Length);
                     Array.Copy(completeBuffer, 8 + messageArray.Length, tempBuf, 0, completeBuffer.Length - (8 + messageArray.Length));
                     completeBuffer = tempBuf;
                 }
@@ -280,6 +283,8 @@ namespace iContrAll.TcpServer
             string login = "";
             string password = "";
 
+            bool loginOK = true;
+
             try
             {
                 XmlDocument doc = new XmlDocument();
@@ -293,6 +298,10 @@ namespace iContrAll.TcpServer
                 if (elemList.Count > 0)
                 {
                     login = elemList[0].InnerXml;
+                    if (login!=System.Configuration.ConfigurationManager.AppSettings["loginid"])
+                    {
+                        loginOK = false;
+                    }
                 }
                 elemList = doc.GetElementsByTagName("password");
                 if (elemList.Count > 0)
@@ -306,7 +315,7 @@ namespace iContrAll.TcpServer
                 return null;
             }
 
-            bool loginOK = true;
+            
 
             LoginReasonType reason = LoginReasonType.Normal;
 
@@ -314,6 +323,8 @@ namespace iContrAll.TcpServer
 
             response[0] = Convert.ToByte(loginOK);
             response[4] = (byte)reason;
+
+            if (loginOK) clientState = ClientState.LoginOK;
 
             return response;
         }
