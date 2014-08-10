@@ -112,10 +112,13 @@ namespace iContrAll.TcpServer
                 cmd.CommandText = "SELECT Id FROM DeviceTypes";
                 using (var reader = cmd.ExecuteReader())
                 {
-                    // Nem professzionális, kéne valami típus paraméter, de így is jó.
-                    if (reader["Id"].ToString() == id.Substring(0,3))
+                    while (reader.Read())
                     {
-                        usableType = true;
+                        // Nem professzionális, kéne valami típus paraméter, de így is jó.
+                        if (reader["Id"].ToString() == id.Substring(0, 3))
+                        {
+                            usableType = true;
+                        }
                     }
                 }
             }
@@ -142,6 +145,7 @@ namespace iContrAll.TcpServer
                     cmd.Parameters.AddWithValue("@Name", name);
                     if (usableType)
                         cmd.Parameters.AddWithValue("@DeviceType", id.Substring(0, 3));
+                    else cmd.Parameters.AddWithValue("@DeviceType", null);
                     cmd.Parameters.AddWithValue("@Timer", timer);
                     cmd.Parameters.AddWithValue("@Voltage", voltage);
                 }
