@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{4438CBD5-5CE7-4687-838F-C520BD55794E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>iContrAll.Raspberry.IO.GeneralPurpose</RootNamespace>
+    <AssemblyName>iContrAll.Raspberry.IO.GeneralPurpose</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Behaviors\BlinkBehavior.cs" />
+    <Compile Include="Behaviors\ChaserBehavior.cs" />
+    <Compile Include="Behaviors\PatternBehavior.cs" />
+    <Compile Include="Behaviors\PinsBehavior.cs" />
+    <Compile Include="Behaviors\PinsBehaviorExtensionMethods.cs" />
+    <Compile Include="Configuration\GpioConnectionConfigurationSection.cs" />
+    <Compile Include="ConnectedPin.cs" />
+    <Compile Include="ConnectedPins.cs" />
+    <Compile Include="ConnectorPin.cs" />
+    <Compile Include="FileGpioConnectionDriver.cs" />
+    <Compile Include="GpioBinaryPinExtensionMethods.cs" />
+    <Compile Include="GpioConnection.cs" />
+    <Compile Include="GpioConnectionDriver.cs" />
+    <Compile Include="GpioConnectionDriverExtensionMethods.cs" />
+    <Compile Include="GpioConnectionSettings.cs" />
+    <Compile Include="GpioInputBinaryPin.cs" />
+    <Compile Include="GpioInputOutputBinaryPin.cs" />
+    <Compile Include="GpioOutputBinaryPin.cs" />
+    <Compile Include="IGpioConnectionDriver.cs" />
+    <Compile Include="InputPinConfiguration.cs" />
+    <Compile Include="Interop.cs" />
+    <Compile Include="MemoryGpioConnectionDriver.cs" />
+    <Compile Include="OutputPinConfiguration.cs" />
+    <Compile Include="PinConfiguration.cs" />
+    <Compile Include="PinConfigurationExtensionMethods.cs" />
+    <Compile Include="PinDetectedEdges.cs" />
+    <Compile Include="PinDirection.cs" />
+    <Compile Include="PinMapping.cs" />
+    <Compile Include="PinResistor.cs" />
+    <Compile Include="PinStatusEventArgs.cs" />
+    <Compile Include="ProcessorPin.cs" />
+    <Compile Include="ProcessorPinExtensionMethods.cs" />
+    <Compile Include="ProcessorPins.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SwitchInputPinConfiguration.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\iContrAll.Raspberry.IO.Interop\iContrAll.Raspberry.IO.Interop.csproj">
+      <Project>{c5e7af7f-ca67-4775-8273-af848e87ade4}</Project>
+      <Name>iContrAll.Raspberry.IO.Interop</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\iContrAll.Raspberry.IO\iContrAll.Raspberry.IO.csproj">
+      <Project>{46693c51-af14-4142-acb3-4cb2db4aa3bc}</Project>
+      <Name>iContrAll.Raspberry.IO</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\iContrAll.Raspberry.System\iContrAll.Raspberry.System.csproj">
+      <Project>{88642fc5-bb83-491d-a531-d35e97fe1d65}</Project>
+      <Name>iContrAll.Raspberry.System</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
