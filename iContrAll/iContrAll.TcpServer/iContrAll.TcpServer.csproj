@@ -60,6 +60,12 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\iContrAll.Raspberry.IO.SerialPeriphererialInterface\iContrAll.Raspberry.IO.SerialPeriphererialInterface.csproj">
+      <Project>{7e1b6c69-7d39-4bcf-848b-d56eeadbdd40}</Project>
+      <Name>iContrAll.Raspberry.IO.SerialPeriphererialInterface</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
