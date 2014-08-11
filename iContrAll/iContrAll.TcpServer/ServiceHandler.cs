@@ -176,27 +176,6 @@ namespace iContrAll.TcpServer
 
         private byte[] ProcessMessage(Message m)
         {
-            //byte[] messageTypeArray = new byte[4];
-            //Array.Copy(readBuffer, messageTypeArray, 4);
-
-            //int messageType = BitConverter.ToInt32(messageTypeArray, 0);
-
-            //byte[] messageLengthArray = new byte[4];
-            //Array.Copy(readBuffer, 4, messageLengthArray, 0, 4);
-
-            //int messageLength = BitConverter.ToInt32(messageLengthArray, 0);
-
-            //byte[] messageArray = new byte[messageLength];
-            //Array.Copy(readBuffer, 8, messageArray, 0, messageLength);
-
-            //string message = Encoding.UTF8.GetString(messageArray);
-
-            //// akkor kell bufferelni a következőre
-            //if (readBuffer.Length > 8 + messageLength)
-            //{
-            //    Console.WriteLine("Houston!");
-            //}
-
             byte messageType = (byte)m.Type;
             int messageLength = m.Length;
             string message = m.Content;
