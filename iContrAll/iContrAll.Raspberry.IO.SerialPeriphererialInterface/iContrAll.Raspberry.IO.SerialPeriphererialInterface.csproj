@@ -61,20 +61,6 @@
     <Compile Include="SpiTransferBuffer.cs" />
     <Compile Include="SpiTransferBufferCollection.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\iContrAll.Raspberry.IO.Interop\iContrAll.Raspberry.IO.Interop.csproj">
-      <Project>{c5e7af7f-ca67-4775-8273-af848e87ade4}</Project>
-      <Name>iContrAll.Raspberry.IO.Interop</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\iContrAll.Raspberry.IO\iContrAll.Raspberry.IO.csproj">
-      <Project>{46693c51-af14-4142-acb3-4cb2db4aa3bc}</Project>
-      <Name>iContrAll.Raspberry.IO</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\iContrAll.Raspberry.System\iContrAll.Raspberry.System.csproj">
-      <Project>{88642fc5-bb83-491d-a531-d35e97fe1d65}</Project>
-      <Name>iContrAll.Raspberry.System</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
