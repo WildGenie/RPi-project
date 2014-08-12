@@ -14,7 +14,7 @@ namespace RadioWithWiringPi
         [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetup")]     //This is an example of how to call a method / function in a c library from c#
         public static extern int WiringPiSetup();
 
-        [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetupGpio")]
+        [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetup")]
         public static extern int WiringPiSetupGpio();
 
         [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetupSys")]
@@ -26,35 +26,35 @@ namespace RadioWithWiringPi
     /// </summary>
     public class GPIO
     {
-        [DllImport("libwiringPi.so", EntryPoint = "pinModeGpio")]           //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "pinMode")]           //Uses Gpio pin numbers
         public static extern void pinMode(int pin, int mode);
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteGpio")]      //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "digitalWrite")]      //Uses Gpio pin numbers
         public static extern void digitalWrite(int pin, int value);
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteByteGpio")]      //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteByte")]      //Uses Gpio pin numbers
         public static extern void digitalWriteByte(int value);
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalReadGpio")]           //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "digitalRead")]           //Uses Gpio pin numbers
         public static extern int digitalRead(int pin);
 
-        [DllImport("libwiringPi.so", EntryPoint = "pullUpDnControlGpio")]         //Uses Gpio pin numbers  
+        [DllImport("libwiringPi.so", EntryPoint = "pullUpDnControl")]         //Uses Gpio pin numbers  
         public static extern void pullUpDnControl(int pin, int pud);
 
         //This pwm mode cannot be used when using GpioSys mode!!
-        [DllImport("libwiringPi.so", EntryPoint = "pwmWriteGpio")]              //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "pwmWrite")]              //Uses Gpio pin numbers
         public static extern void pwmWrite(int pin, int value);
 
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetModeGpio")]             //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetMode")]             //Uses Gpio pin numbers
         public static extern void pwmSetMode(int mode);
 
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetRangeGpio")]             //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetRange")]             //Uses Gpio pin numbers
         public static extern void pwmSetRange(uint range);
 
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetClockGpio")]             //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetClock")]             //Uses Gpio pin numbers
         public static extern void pwmSetClock(int divisor);
 
-        [DllImport("libwiringPi.so", EntryPoint = "gpioClockSetGpio")]              //Uses Gpio pin numbers
+        [DllImport("libwiringPi.so", EntryPoint = "gpioClockSet")]              //Uses Gpio pin numbers
         public static extern void ClockSetGpio(int pin, int freq);
 
         public enum GPIOpinmode
@@ -114,7 +114,7 @@ namespace RadioWithWiringPi
         [DllImport("libwiringPi.so", EntryPoint = "piBoardRev")]
         public static extern int piBoardRev();
 
-        [DllImport("libwiringPi.so", EntryPoint = "wpiPinToGpio")]
+        [DllImport("libwiringPi.so", EntryPoint = "wpiPinTo")]
         public static extern int wpiPinToGpio(int wPiPin);
 
         [DllImport("libwiringPi.so", EntryPoint = "setPadDrive")]
@@ -132,7 +132,7 @@ namespace RadioWithWiringPi
         /// <param name="channel">Selects either Channel 0 or 1 for use</param>
         /// <param name="speed">Selects speed, 500,000 to 32,000,000</param>
         /// <returns>-1 for an error, or the linux file descriptor the channel uses</returns>
-        [DllImport("libwiringPiSPI.so", EntryPoint = "wiringPiSPISetup")]
+        [DllImport("libwiringPi.so", EntryPoint = "wiringPiSPISetup")]
         public static extern int wiringPiSPISetup(int channel, int speed);
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace RadioWithWiringPi
         /// <param name="data">signed byte array pointer which holds the data to send and will then hold the received data</param>
         /// <param name="len">How many bytes to write and read</param>
         /// <returns>-1 for an error, or the linux file descriptor the channel uses</returns>
-        [DllImport("libwiringPiSPI.so", EntryPoint = "wiringPiSPIDataRW")]
+        [DllImport("libwiringPi.so", EntryPoint = "wiringPiSPIDataRW")]
         public static unsafe extern int wiringPiSPIDataRW(int channel, byte* data, int len);  //char is a signed byte
     }
 
