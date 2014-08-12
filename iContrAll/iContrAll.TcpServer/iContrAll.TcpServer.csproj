@@ -61,9 +61,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\iContrAll.Raspberry.IO.SerialPeriphererialInterface\iContrAll.Raspberry.IO.SerialPeriphererialInterface.csproj">
-      <Project>{7e1b6c69-7d39-4bcf-848b-d56eeadbdd40}</Project>
-      <Name>iContrAll.Raspberry.IO.SerialPeriphererialInterface</Name>
+    <ProjectReference Include="..\iContrAll.SPIRadioWithWiringPi\iContrAll.SPIRadio.csproj">
+      <Project>{607b15ce-1746-4c52-84ac-f21d1cf832aa}</Project>
+      <Name>iContrAll.SPIRadio</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -20,6 +20,9 @@ namespace iContrAll.TcpServer
         
         private TcpClient tcpClient;
         private ClientState clientState;
+        private TcpClient client;
+        private SPIRadio.RadioCommunication radio;
+        private Server server;
 
         public EndPoint Endpoint { get { return tcpClient.Client.RemoteEndPoint; } }
 
@@ -30,6 +33,24 @@ namespace iContrAll.TcpServer
 
             Thread commThread = new Thread(HandleMessages);
             commThread.Start();
+        }
+
+        public ServiceHandler(TcpClient client, SPIRadio.RadioCommunication radio)
+        {
+            // TODO: Complete member initialization
+            this.client = client;
+            this.radio = radio;
+
+            Thread commThread = new Thread(HandleMessages);
+            commThread.Start();
+        }
+
+        public ServiceHandler(TcpClient client, SPIRadio.RadioCommunication radio, Server server)
+        {
+            // TODO: Complete member initialization
+            this.client = client;
+            this.radio = radio;
+            this.server = server;
         }
 
         private async void HandleMessages()
@@ -112,8 +133,8 @@ namespace iContrAll.TcpServer
 
                 int messageType = BitConverter.ToInt32(messageTypeArray, 0);
 
-                if (clientState == ClientState.LoginPhase
-                    && messageType != (byte)MessageType.LoginRequest)
+                Console.WriteLine(clientState.ToString());
+                if (clientState != ClientState.LoginOK && messageType != (byte)MessageType.LoginRequest)
                 {
                     return returnList;
                 }
@@ -231,11 +252,23 @@ namespace iContrAll.TcpServer
                 case (byte)MessageType.eCmdDelActionFromActionList:
                     AddOrDelActionToOrFromActionList(false, message);
                     break;
+                case (byte)MessageType.RadioMsg:
+                    SendCommandOnRadio(message);
+                    break;
                 default:
                     break;
             }
 
             return null;
+        }
+
+        private void SendCommandOnRadio(string message)
+        {
+            // ActionList végrehajtás is ilyen
+
+            string senderId = System.Configuration.ConfigurationManager.AppSettings["loginid"];
+
+            //this.radio.SendMessage(senderId, )
         }
 
         private byte[] BuildMessage(int msgNumber, byte[] message)
@@ -262,7 +295,7 @@ namespace iContrAll.TcpServer
             string login = "";
             string password = "";
 
-            bool loginOK = true;
+            bool loginOK = false;
 
             try
             {
@@ -272,20 +305,22 @@ namespace iContrAll.TcpServer
                 // TODO:
                 //      Do some check!
                 //      LOGIN KEZELÉS!!!
-                XmlNodeList elemList = doc.GetElementsByTagName("loginid");
+                XmlNodeList elemListLogin = doc.GetElementsByTagName("loginid");
+                XmlNodeList elemListPassword = doc.GetElementsByTagName("password");
+                if (elemListLogin.Count > 0 && elemListPassword.Count > 0)
+                {
+                    string appLogin = System.Configuration.ConfigurationManager.AppSettings["loginid"];
+                    string appPwd = System.Configuration.ConfigurationManager.AppSettings["password"];
+                    login = elemListLogin[0].InnerXml;
+                    password = elemListPassword[0].InnerXml;
 
-                if (elemList.Count > 0)
-                {
-                    login = elemList[0].InnerXml;
-                    if (login!=System.Configuration.ConfigurationManager.AppSettings["loginid"])
+                    Console.WriteLine("Login: {0} == {1}", login, appLogin);
+                    Console.WriteLine("Password: {0} == {1}", password, appPwd);
+
+                    if (login.Equals(appLogin) && password.Equals(appPwd))
                     {
-                        loginOK = false;
+                        loginOK = true;
                     }
-                }
-                elemList = doc.GetElementsByTagName("password");
-                if (elemList.Count > 0)
-                {
-                    password = elemList[0].InnerXml;
                 }
             }
             catch(Exception)
@@ -293,8 +328,6 @@ namespace iContrAll.TcpServer
                 Console.WriteLine("Error in Xml parsing.");
                 return null;
             }
-
-            
 
             LoginReasonType reason = LoginReasonType.Normal;
 

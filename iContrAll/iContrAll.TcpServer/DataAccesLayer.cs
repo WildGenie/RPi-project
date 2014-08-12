@@ -429,6 +429,19 @@ namespace iContrAll.TcpServer
             }
         }
 
+        public void UpdateDeviceState(string deviceId)
+        {
+            using (MySqlCommand cmd = mysqlConn.CreateCommand())
+            {
+                // it's only pseudo code at the moment.
+                cmd.CommandText = "UPDATE Devices SET Status = @Status WHERE Id = @DeviceId";
+                cmd.Parameters.AddWithValue("@Status", null);
+                cmd.Parameters.AddWithValue("@DeviceId", deviceId);
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         #endregion
 
         #region IDisposable members
