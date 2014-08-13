@@ -20,7 +20,10 @@ namespace iContrAll.TcpServer
         public Server(int port)
         {
             this.radio = new RadioCommunication();
-            radio.InitRadio();
+            if(radio.InitRadio())
+            {
+                Console.WriteLine("Radio init sikeres");
+            }
             radio.RadioMessageReveived += ProcessReceivedRadioMessage;
 
             this.port = port;
@@ -30,28 +33,47 @@ namespace iContrAll.TcpServer
             this.listenThread.Start();
         }
 
+        private void initRadio()
+        {
+            this.radio = null;
+            this.radio = new RadioCommunication();
+            if (radio.InitRadio())
+            {
+                Console.WriteLine("Radio init sikeres");
+            }
+            radio.RadioMessageReveived += ProcessReceivedRadioMessage;
+        }
+
         private void ProcessReceivedRadioMessage(RadioMessageEventArgs e)
         {
-            if (e.ReceivedBytes == null)
+            if (e.ErrorCode == -1)
+            {
+                this.initRadio();
+                return;
+            }
+            
+            if (e.ReceivedMessage == null)
                 return;
 
-            // specified for 4 channel light controller
-            string senderId = Encoding.UTF8.GetString(e.ReceivedBytes.Take(8).ToArray());
-            string targetId = Encoding.UTF8.GetString(e.ReceivedBytes.Skip(8).Take(8).ToArray());
+            Console.WriteLine("Esemény:" + e.ReceivedMessage);
 
-            // drop packages we are not interested
-            if (targetId != System.Configuration.ConfigurationManager.AppSettings["loginid"]) return;
+            //// specified for 4 channel light controller
+            //string senderId = Encoding.UTF8.GetString(e.ReceivedMessage.Take(8).ToArray());
+            //string targetId = Encoding.UTF8.GetString(e.ReceivedMessage.Skip(8).Take(8).ToArray());
 
-            string channels = Encoding.UTF8.GetString(e.ReceivedBytes.Skip(11).Take(4).ToArray());
+            //// drop packages we are not interested
+            //if (targetId != System.Configuration.ConfigurationManager.AppSettings["loginid"]) return;
 
-            byte[] voltageValues = e.ReceivedBytes.Skip(15).Take(4).ToArray();
-            byte[] dimValues = e.ReceivedBytes.Skip(19).Take(4).ToArray();
+            //string channels = Encoding.UTF8.GetString(e.ReceivedBytes.Skip(11).Take(4).ToArray());
 
-            using (var dal = new DataAccesLayer())
-            {
-                // TODO: minden tulajdonságot felvenni.
-                dal.UpdateDeviceState(senderId);
-            }
+            //byte[] voltageValues = e.ReceivedBytes.Skip(15).Take(4).ToArray();
+            //byte[] dimValues = e.ReceivedBytes.Skip(19).Take(4).ToArray();
+
+            //using (var dal = new DataAccesLayer())
+            //{
+            //    // TODO: minden tulajdonságot felvenni.
+            //    dal.UpdateDeviceState(senderId);
+            //}
 
         }
 
@@ -67,7 +89,7 @@ namespace iContrAll.TcpServer
                 Console.WriteLine("Client connected: {0}", client.Client.RemoteEndPoint);
 
                 // TODO: start() a servicehandlernek
-                ServiceHandler sh = new ServiceHandler(client, radio, this);
+                ServiceHandler sh = new ServiceHandler(client, radio);
             }
         }
     }
