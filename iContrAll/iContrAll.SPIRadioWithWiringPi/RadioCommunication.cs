@@ -14,82 +14,113 @@ namespace iContrAll.SPIRadio
 
         public bool InitRadio()
         {
-            if (Init.WiringPiSetup() < 0)
+            try
             {
-                Console.WriteLine("unable to set wiring pi\n");
+                state = '0';
+
+                if (Init.WiringPiSetup() < 0)
+                {
+                    Console.WriteLine("unable to set wiring pi\n");
+                    return false;
+                }
+
+                Console.WriteLine("InitWiringPiSetup OK");
+
+                GPIO.pinMode(1, (int)GPIO.GPIOpinmode.Output);
+                SPI.wiringPiSPISetup(0, 5000000);
+                GPIO.pinMode(RadioConstants.PWDN, (int)GPIO.GPIOpinmode.Output);
+
+                for (int i = 0; i < 4; i++)
+                {
+                    GPIO.digitalWrite(RadioConstants.PWDN, 1);
+                    Thread.Sleep(RadioConstants.DD);
+                    GPIO.digitalWrite(RadioConstants.PWDN, 0);
+                    Thread.Sleep(RadioConstants.DD);
+                }
+
+                Console.WriteLine("GPIO setup OK");
+
+                if (PiThreadInterrupts.wiringPiISR(RadioConstants.INT, (int)PiThreadInterrupts.InterruptLevels.INT_EDGE_FALLING, Interrupt0) < 0)
+                {
+                    Console.WriteLine("unable to set interrupt pin\n");
+                    return false;
+                }
+
+                Console.WriteLine("Interrupt pin setup ok");
+
+                power_up();
+                Console.WriteLine("power up");
+
+                config_rf_chip(RadioConstants.P);
+                Console.WriteLine("config rf chip");
+
+                Clear_Int_Flags(RadioConstants.P);
+                RX_Command(RadioConstants.P);
+
+                return true;
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
                 return false;
             }
-
-            GPIO.pinMode(1, (int)GPIO.GPIOpinmode.Output);
-            SPI.wiringPiSPISetup(0, 5000000);
-            GPIO.pinMode(RadioConstants.PWDN, (int)GPIO.GPIOpinmode.Output);
-
-            for (int i = 0; i < 4; i++)
-            {
-                GPIO.digitalWrite(RadioConstants.PWDN, 1);
-                Thread.Sleep(RadioConstants.DD);
-                GPIO.digitalWrite(RadioConstants.PWDN, 0);
-                Thread.Sleep(RadioConstants.DD);
-            }
-
-            if (PiThreadInterrupts.wiringPiISR(RadioConstants.INT, (int)PiThreadInterrupts.InterruptLevels.INT_EDGE_FALLING, Interrupt0) < 0)
-            {
-                Console.WriteLine("unable to set interrupt pin\n");
-                return false;
-            }
-
-            power_up();
-            Console.WriteLine("power up");
-
-            config_rf_chip(RadioConstants.P);
-            Console.WriteLine("config rf chip");
-
-            Clear_Int_Flags(RadioConstants.P);
-            RX_Command(RadioConstants.P, ref state);
-
-            return true;
         }
         
         byte[] data = new byte[RadioConstants.FIX_PACKET_LENGTH];
 
-        public bool SendMessage(string senderId, string targetId, string hexa, 
-                            byte[] channels, byte[] chVoltage, byte[]chDim)
+        //public bool SendMessage(string senderId, string targetId, string hexa, 
+        //                    string channels, string voltage, byte[]chDim)
+        public bool SendMessage(byte[] message)
         {
-            data = new byte[RadioConstants.FIX_PACKET_LENGTH];
-
-            byte[] sendMessageBytes = Encoding.UTF8.GetBytes(senderId+targetId+hexa+"x");
-
-            Array.Copy(sendMessageBytes, 0, data, 0, sendMessageBytes.Length);
-            
-
-            // TODO: ez rendes karakteresen jöjjön
-            Array.Copy(channels, 0, data, 11, 4);
-            
-            Array.Copy(chVoltage, 0, data, 15, 4);
-
-            Array.Copy(chDim, 0, data, 19, 4);
-            
-            
-            if (sendMessageBytes.Length > 62) return false;
-
-            // maradék 0
-            for (int i = data.Length; i < 62; i++)
+            try
             {
-                data[i] = 0x08;
+                data = new byte[RadioConstants.FIX_PACKET_LENGTH];
+
+                //byte[] sendMessageBytes = Encoding.UTF8.GetBytes(senderId+targetId+hexa+"x"+channels+voltage);
+
+                //Array.Copy(sendMessageBytes, 0, data, 0, sendMessageBytes.Length);
+
+
+                //// TODO: ez rendes karakteresen jöjjön
+                //// Array.Copy(channels, 0, data, 11, 4);
+
+                ////Array.Copy(chVoltage, 0, data, 15, 4);
+
+                //Array.Copy(chDim, 0, data, 19, 4);
+
+                //byte[] sendMessageBytes = Encoding.UTF8.GetBytes(msg);
+                Array.Copy(message, 0, data, 0, message.Length);
+                if (message.Length > 62) return false;
+
+                // maradék 0
+                for (int i = message.Length; i < 62; i++)
+                {
+                    data[i] = 0x08;
+                }
+                // kocsi vissza
+                data[62] = 10;
+                data[63] = 13;
+
+                // írás
+                Write_Tx_Fifo(RadioConstants.P, data);
+                Clear_Int_Flags(RadioConstants.P);
+
+                TX_Command(RadioConstants.P);
+
+                Console.WriteLine("Elvileg a kiküldés végére ér");
+
+                Thread.Sleep(RadioConstants.DD);
+
+                return true;
             }
-            // kocsi vissza
-            data[62] = 10;
-            data[63] = 13;
-
-
-            // írás
-            Write_Tx_Fifo(RadioConstants.P, data);
-            Clear_Int_Flags(RadioConstants.P);
-            TX_Command(RadioConstants.P, ref state);
-
-            Thread.Sleep(RadioConstants.DD);
-
-            return true;
+            catch(Exception e)
+            {   
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+                InitRadio();
+                return false;
+            }
         }
 
         unsafe void CTS()
@@ -112,29 +143,41 @@ namespace iContrAll.SPIRadio
 
         unsafe void Interrupt0()
         {
-            if (state == 'r')
+            try
             {
-                Console.WriteLine("packet received\n");
-                Read_Rx_Fifo(RadioConstants.P, data);
-                Clear_Int_Flags(RadioConstants.P);
-                RX_Command(RadioConstants.P, ref state);
-
-                //string s = Encoding.UTF8.GetString(data);
-
-                if (RadioMessageReveived!=null)
+                Console.WriteLine("interrup ugras eleje ok");
+                if (state == 'r')
                 {
-                    RadioMessageReveived(new RadioMessageEventArgs(data));
+                    Console.WriteLine("packet received");
+                    Read_Rx_Fifo(RadioConstants.P, data);
+                    Clear_Int_Flags(RadioConstants.P);
+                    RX_Command(RadioConstants.P);
+
+                    string s = Encoding.UTF8.GetString(data);
+
+                    if (RadioMessageReveived != null)
+                    {
+                        RadioMessageReveived(new RadioMessageEventArgs(s, 0));
+                    }
+
+                    //Console.WriteLine(s);
                 }
 
-                //Console.WriteLine(s);
+                if (state == 't')
+                {
+                    Console.WriteLine("packet sent");
+                    GPIO.digitalWrite(RadioConstants.TXRX, 0);
+                    Clear_Int_Flags(RadioConstants.P);
+                    RX_Command(RadioConstants.P);
+                }
             }
-
-            if (state == 't')
+            catch(Exception e )
             {
-                Console.WriteLine("packet sent\n");
-                GPIO.digitalWrite(RadioConstants.TXRX, 0);
-                Clear_Int_Flags(RadioConstants.P);
-                RX_Command(RadioConstants.P, ref state);
+                Console.WriteLine(e.Message);
+                if (RadioMessageReveived != null)
+                {
+                    RadioMessageReveived(new RadioMessageEventArgs(string.Empty, -1));
+                }
             }
         }
 
@@ -183,9 +226,9 @@ namespace iContrAll.SPIRadio
             CTS();
         }
 
-        unsafe void RX_Command(int p, ref char x)
+        unsafe void RX_Command(int p)
         {
-            x = 'r';
+            state = 'r';
             byte[] d = new byte[] { RadioConstants.CMD_START_RX, 0, 0, 0, RadioConstants.FIX_PACKET_LENGTH, 0, 0, 0 };
             fixed (byte* pD = d)
             {
@@ -253,9 +296,9 @@ namespace iContrAll.SPIRadio
             CTS();
         }
 
-        unsafe void TX_Command(int p, ref char x)
+        unsafe void TX_Command(int p)
         {
-            x = 't';
+            state = 't';
             GPIO.digitalWrite(RadioConstants.TXRX, 1);
             byte[] d = new byte[] { RadioConstants.CMD_START_TX, 0, 0, 0, RadioConstants.FIX_PACKET_LENGTH, 0 };
             fixed (byte* pD = d)

@@ -14,11 +14,14 @@ namespace iContrAll.SPIRadio
         //public byte[] ChannelVoltage { get; set; }
         //public byte[] ChannelDim { get; set; }
 
-        public byte[] ReceivedBytes { get; set; }
+        public string ReceivedMessage { get; set; }
 
-        public RadioMessageEventArgs(byte[] receivedBytes)
+        public int ErrorCode { get; set; }
+
+        public RadioMessageEventArgs(string receivedMessage, int errorCode)
         {
-            this.ReceivedBytes = receivedBytes;
+            this.ReceivedMessage = receivedMessage;
+            this.ErrorCode = errorCode;
         }
     }
 }

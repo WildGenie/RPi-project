@@ -61,6 +61,36 @@ namespace RadioWithWiringPi
         };
 
 		static char state = '0';
+        static byte[] data = new byte[FIX_PACKET_LENGTH];
+
+        unsafe static void Interrupt0()
+        {
+            if (state == 'r')
+            {
+                Console.WriteLine("packet received\n");
+                Read_Rx_Fifo(P, data);
+                Clear_Int_Flags(P);
+                RX_Command(P, ref state);
+
+                string s = Encoding.UTF8.GetString(data);
+
+                //for (int i = 0; i < FIX_PACKET_LENGTH; i++)
+                //{
+
+                //    Console.Write(data[i].ToString());
+                //}
+
+                Console.WriteLine(s);
+            }
+
+            if (state == 't')
+            {
+                Console.WriteLine("packet sent\n");
+                GPIO.digitalWrite(TXRX, 0);
+                Clear_Int_Flags(P);
+                RX_Command(P, ref state);
+            }
+        }
 
 		static void Main(string[] args)
 		{
@@ -70,7 +100,7 @@ namespace RadioWithWiringPi
 				return;
 			}
 
-			GPIO.pinMode(1, (int)GPIO.GPIOpinmode.Output);
+			GPIO.pinMode(TXRX, (int)GPIO.GPIOpinmode.Output);
 			SPI.wiringPiSPISetup(0, 5000000);
 			GPIO.pinMode(PWDN, (int)GPIO.GPIOpinmode.Output);
 
@@ -93,6 +123,7 @@ namespace RadioWithWiringPi
             
             config_rf_chip(P);
             Console.WriteLine("config rf chip");
+
             Clear_Int_Flags(P);
             RX_Command(P, ref state);
             
@@ -100,10 +131,8 @@ namespace RadioWithWiringPi
 
             while (Console.ReadKey().KeyChar!='Q')
             {
-                data = new byte[FIX_PACKET_LENGTH];
-                
                 //
-                string sendMessage = "00000112LC10123401xxxx1xxxxxxx";
+                string sendMessage = "00000112LC10000101xxxx1xxxxxxx";
                 byte testByte = 50;
 
                 byte[] sendMessageBytes = Encoding.UTF8.GetBytes(sendMessage);
@@ -168,36 +197,9 @@ namespace RadioWithWiringPi
 	        }
         }
 
-        static byte[] data = new byte[FIX_PACKET_LENGTH];
+        
 
-		unsafe static void Interrupt0()
-		{
-			if(state=='r')
-			{
-				Console.WriteLine("packet received\n");
-				Read_Rx_Fifo(P,data);
-				Clear_Int_Flags(P);
-				RX_Command(P, ref state);
-
-                string s = Encoding.UTF8.GetString(data);
-
-                //for (int i = 0; i < FIX_PACKET_LENGTH; i++)
-                //{
-
-                //    Console.Write(data[i].ToString());
-                //}
-
-				Console.WriteLine(s);
-			}
-
-			if(state=='t')
-			{
-				Console.WriteLine("packet sent\n");
-				GPIO.digitalWrite(TXRX,0);
-				Clear_Int_Flags(P);
-				RX_Command(P,ref state);
-			}
-		}
+		
 
         unsafe static void Read_Rx_Fifo(int p, byte[] x)
         {
